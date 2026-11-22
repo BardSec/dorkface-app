@@ -27,7 +27,8 @@
   ];
   const TYPE_LABELS = {pdf: 'PDF', docx: 'Word', xlsx: 'Excel', pptx: 'PowerPoint', odt: 'OpenDocument text',
     ods: 'OpenDocument spreadsheet', odp: 'OpenDocument presentation', zip: 'Zip', jpeg: 'JPEG', png: 'PNG',
-    ole: 'Older Office file', unknown: 'Unknown'};
+    doc: 'Word (.doc)', xls: 'Excel (.xls)', ppt: 'PowerPoint (.ppt)', ole: 'Compound file', heic: 'HEIC', avif: 'AVIF',
+    unknown: 'Unknown'};
 
   // --- bytes and text ------------------------------------------------------------
 
@@ -747,6 +748,448 @@
     }
   }
 
+  // --- OLE2 compound files (.doc, .xls, .ppt) ------------------------------------------------
+  // A small FAT file system inside one file ([MS-CFB]). Streams under the mini-stream cutoff
+  // (4096 bytes) live in the mini stream, in 64-byte sectors with their own allocation table.
+
+  const END_OF_CHAIN = 0xFFFFFFFE;
+  function utf16le(b, start, length) {
+    let s = '';
+    for (let k = start; k + 1 < Math.min(b.length, start + length); k += 2) s += String.fromCharCode(b[k] | (b[k + 1] << 8));
+    return s.replace(/\0[\s\S]*$/, '');
+  }
+
+  function readCfb(bytes) {
+    const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+    const u16 = o => dv.getUint16(o, true);
+    const u32 = o => dv.getUint32(o, true);
+    if (bytes.length < 512) throw new Error('This file is damaged or truncated.');
+    const shift = u16(0x1E);
+    const miniShift = u16(0x20);
+    if ((shift !== 9 && shift !== 12) || miniShift !== 6) throw new Error('This file is damaged or truncated.');
+    const ss = 1 << shift;
+    const ms = 1 << miniShift;
+    const cutoff = u32(0x38);
+    const maxSid = Math.ceil(bytes.length / ss) - 2;
+    const off = sid => (sid + 1) * ss;
+    const valid = sid => sid <= maxSid;
+
+    // Sectors holding the allocation table: 109 listed in the header, the rest in the DIFAT chain.
+    const fatSids = [];
+    for (let k = 0; k < 109; k++) { const s = u32(0x4C + 4 * k); if (valid(s)) fatSids.push(s); }
+    const per = ss / 4 - 1;
+    for (let d = u32(0x44), guard = 0; valid(d) && guard < 50000; guard++) {
+      for (let k = 0; k < per; k++) { const s = u32(off(d) + 4 * k); if (valid(s)) fatSids.push(s); }
+      d = off(d) + 4 * per + 4 <= bytes.length ? u32(off(d) + 4 * per) : END_OF_CHAIN;
+    }
+    const fat = new Uint32Array(fatSids.length * (ss / 4)).fill(0xFFFFFFFF);
+    fatSids.forEach((s, i) => {
+      for (let k = 0; k < ss / 4 && off(s) + 4 * k + 4 <= bytes.length; k++) fat[i * (ss / 4) + k] = u32(off(s) + 4 * k);
+    });
+
+    function chain(start, table, limit) {
+      const out = [];
+      const seen = new Set();
+      for (let s = start; s < table.length && !seen.has(s) && out.length < limit; s = table[s]) {
+        seen.add(s);
+        out.push(s);
+      }
+      return out;
+    }
+    function readSectors(start, size) {
+      const limit = size == null ? fat.length : Math.ceil(size / ss) + 1;
+      const sids = chain(start, fat, Math.min(limit, Math.ceil(MAX_INFLATE / ss)));
+      const outBytes = new Uint8Array(sids.length * ss);
+      sids.forEach((s, i) => { if (valid(s)) outBytes.set(bytes.subarray(off(s), Math.min(off(s) + ss, bytes.length)), i * ss); });
+      return size == null ? outBytes : outBytes.subarray(0, Math.min(size, outBytes.length));
+    }
+
+    const dir = readSectors(u32(0x30), null);
+    const ddv = new DataView(dir.buffer, dir.byteOffset, dir.byteLength);
+    const entries = [];
+    for (let o = 0; o + 128 <= dir.length && entries.length < 10000; o += 128) {
+      const type = dir[o + 66];
+      if (type !== 1 && type !== 2 && type !== 5) continue;
+      const nameLen = Math.min(64, ddv.getUint16(o + 64, true));
+      entries.push({name: utf16le(dir, o, Math.max(0, nameLen - 2)), type,
+        start: ddv.getUint32(o + 116, true), size: ddv.getUint32(o + 120, true)});
+    }
+    const root = entries.find(e => e.type === 5);
+    const miniStream = root ? readSectors(root.start, root.size) : new Uint8Array(0);
+    const mfBytes = readSectors(u32(0x3C), u32(0x40) * ss);
+    const miniFat = new Uint32Array(Math.floor(mfBytes.length / 4));
+    const mdv = new DataView(mfBytes.buffer, mfBytes.byteOffset, mfBytes.byteLength);
+    for (let k = 0; k < miniFat.length; k++) miniFat[k] = mdv.getUint32(4 * k, true);
+
+    function read(name) {
+      const e = entries.find(x => x.type === 2 && x.name.toLowerCase() === name.toLowerCase());
+      if (!e) return null;
+      const size = Math.min(e.size, MAX_INFLATE);
+      if (e.size >= cutoff) return readSectors(e.start, size);
+      const sids = chain(e.start, miniFat, Math.ceil(size / ms) + 1);
+      const outBytes = new Uint8Array(sids.length * ms);
+      sids.forEach((s, i) => outBytes.set(miniStream.subarray(s * ms, s * ms + ms), i * ms));
+      return outBytes.subarray(0, size);
+    }
+    return {entries, has: name => entries.some(e => e.type === 2 && e.name.toLowerCase() === name.toLowerCase()), read};
+  }
+
+  // Property sets ([MS-OLEPS]): \x05SummaryInformation and \x05DocumentSummaryInformation.
+  const FMTID_SUMMARY = 'e0859ff2f94f6810ab9108002b27b3d9';
+  const FMTID_DOCSUMMARY = '02d5cdd59c2e1b10939708002b2cf9ae';
+  const FMTID_CUSTOM = '05d5cdd59c2e1b10939708002b2cf9ae';
+
+  function decodeCp(b, cp) {
+    let end = b.length;
+    while (end > 0 && b[end - 1] === 0) end--;
+    b = b.subarray(0, end);
+    if (cp === 1200) return utf16le(b, 0, b.length);
+    if (cp === 65001) return utf8(b);
+    const label = cp === 10000 ? 'macintosh' : (cp >= 874 && cp <= 1258) ? `windows-${cp}` : 'windows-1252';
+    try { return new TextDecoder(label).decode(b); } catch (e) { return latin1(b); }
+  }
+  // FILETIME: 100 ns intervals since 1601-01-01 UTC.
+  function filetime(lo, hi) {
+    const ms = (hi * 4294967296 + lo) / 10000 - 11644473600000;
+    if (!(ms > 0)) return null;
+    const d = new Date(ms);
+    return isNaN(d) || d.getUTCFullYear() > 2200 ? null : d.toISOString().replace('.000Z', 'Z');
+  }
+
+  function propertySets(b) {
+    if (!b || b.length < 28) return [];
+    const dv = new DataView(b.buffer, b.byteOffset, b.byteLength);
+    const u16 = o => (o + 2 <= b.length ? dv.getUint16(o, true) : 0);
+    const u32 = o => (o + 4 <= b.length ? dv.getUint32(o, true) : 0);
+    if (u16(0) !== 0xFFFE) return [];
+    const hex = (s, e) => [...b.subarray(s, e)].map(x => x.toString(16).padStart(2, '0')).join('');
+    function value(po, cp) {
+      if (po + 8 > b.length) return null;
+      const vt = u16(po);
+      const p = po + 4;
+      switch (vt) {
+        case 2: return dv.getInt16(p, true);
+        case 3: return dv.getInt32(p, true);
+        case 19: return u32(p);
+        case 11: return u16(p) ? 'true' : 'false';
+        case 30: return decodeCp(b.subarray(p + 4, Math.min(b.length, p + 4 + Math.min(u32(p), 65536))), cp);
+        case 31: return utf16le(b, p + 4, Math.min(u32(p), 32768) * 2);
+        case 64: return {filetime: [u32(p), u32(p + 4)]};
+        default: return null;
+      }
+    }
+    const sets = [];
+    const n = Math.min(u32(24), 4);
+    for (let k = 0; k < n; k++) {
+      const fo = 28 + 20 * k;
+      if (fo + 20 > b.length) break;
+      const fmtid = hex(fo, fo + 16);
+      const so = u32(fo + 16);
+      const count = Math.min(u32(so + 4), 1000);
+      const raw = [];
+      for (let j = 0; j < count; j++) raw.push([u32(so + 8 + 8 * j), so + u32(so + 12 + 8 * j)]);
+      let cp = 1252;
+      for (const [id, po] of raw) if (id === 1 && u16(po) === 2) cp = u16(po + 4);
+      const props = new Map();
+      const names = new Map();
+      for (const [id, po] of raw) {
+        if (id === 0) {  // dictionary: property id -> name (custom properties)
+          let p = po + 4;
+          const entriesN = Math.min(u32(po), 1000);
+          for (let j = 0; j < entriesN && p + 8 <= b.length; j++) {
+            const pid = u32(p);
+            const len = Math.min(u32(p + 4), 512);
+            p += 8;
+            if (cp === 1200) {
+              names.set(pid, utf16le(b, p, len * 2));
+              p += len * 2;
+              p += (4 - ((p - so) % 4)) % 4;
+            } else {
+              names.set(pid, decodeCp(b.subarray(p, p + len), cp));
+              p += len;
+            }
+          }
+        } else if (id !== 1) {
+          props.set(id, value(po, cp));
+        }
+      }
+      sets.push({fmtid, props, names});
+    }
+    return sets;
+  }
+
+  const SUMMARY_PROPS = {2: ['Title', 'other'], 3: ['Subject', 'other'], 4: ['Author', 'person'], 5: ['Keywords', 'other'],
+    6: ['Comments', 'other'], 7: ['Template', 'other'], 8: ['Last modified by', 'person'], 9: ['Revision', 'other'],
+    11: ['Last printed', 'date'], 12: ['Created', 'date'], 13: ['Modified', 'date']};
+
+  function oleProperties(cfb, out) {
+    let app = '';
+    let version = '';
+    const text = v => (v && v.filetime ? filetime(v.filetime[0], v.filetime[1]) : v == null ? '' : String(v));
+    for (const set of propertySets(cfb.read('\u0005SummaryInformation'))) {
+      if (set.fmtid !== FMTID_SUMMARY) continue;
+      for (const [id, v] of set.props) {
+        if (SUMMARY_PROPS[id]) out.add(SUMMARY_PROPS[id][0], text(v), SUMMARY_PROPS[id][1]);
+        else if (id === 10 && v && v.filetime) {  // editing time: a duration, not a date
+          const minutes = Math.round((v.filetime[1] * 4294967296 + v.filetime[0]) / 6e8);
+          if (minutes > 0) out.add('Editing time (minutes)', String(minutes));
+        } else if (id === 18) app = text(v);
+      }
+    }
+    for (const set of propertySets(cfb.read('\u0005DocumentSummaryInformation'))) {
+      if (set.fmtid === FMTID_DOCSUMMARY) {
+        for (const [id, v] of set.props) {
+          if (id === 2) out.add('Category', text(v));
+          else if (id === 14) out.add('Manager', text(v), 'person');
+          else if (id === 15) out.add('Company', text(v), 'org');
+          else if (id === 23 && typeof v === 'number' && v > 0) version = `${v >>> 16}.${v & 0xFFFF}`;
+        }
+      } else if (set.fmtid === FMTID_CUSTOM) {
+        for (const [id, v] of set.props) {
+          const name = set.names.get(id);
+          if (name) customProp(out, name, text(v));
+        }
+      }
+    }
+    out.add('Application', [app, version].filter(Boolean).join(' '), 'software');
+  }
+
+  // Word 97-2003: the FIB in the WordDocument stream points into the table stream at the
+  // "saved by" list (last 10 saves: user and full path), the template path, revision-mark
+  // authors and comment authors.
+  function wordExtras(cfb, out, notes) {
+    const wd = cfb.read('WordDocument');
+    if (!wd || wd.length < 160) return;
+    const dv = new DataView(wd.buffer, wd.byteOffset, wd.byteLength);
+    const u16 = o => (o + 2 <= wd.length ? dv.getUint16(o, true) : 0);
+    const u32 = o => (o + 4 <= wd.length ? dv.getUint32(o, true) : 0);
+    if (u16(0) !== 0xA5EC) return;
+    const flags = u16(0x0A);
+    if (flags & 0x0100) { notes.push('This Word document is password-protected, so only its document properties could be read.'); return; }
+    const table = cfb.read(flags & 0x0200 ? '1Table' : '0Table');
+    if (!table) return;
+    let p = 32;
+    p += 2 + u16(p) * 2;                 // fibRgW
+    p += 2 + u16(p) * 4;                 // fibRgLw
+    const pairs = u16(p);
+    const base = p + 2;                  // fibRgFcLcb
+    const pair = i => (i < pairs ? [u32(base + 8 * i), u32(base + 8 * i + 4)] : [0, 0]);
+    const tdv = new DataView(table.buffer, table.byteOffset, table.byteLength);
+    const t16 = o => (o + 2 <= table.length ? tdv.getUint16(o, true) : 0);
+
+    function sttb(i) {  // string table: [fExtend] cData cbExtra, then (cch, chars, extra) per string
+      const [fc, lcb] = pair(i);
+      if (!lcb || fc + lcb > table.length) return [];
+      const end = fc + lcb;
+      let q = fc;
+      const ext = t16(q) === 0xFFFF;
+      if (ext) q += 2;
+      const count = Math.min(t16(q), 1000);
+      const extra = t16(q + 2);
+      q += 4;
+      const strs = [];
+      for (let k = 0; k < count && q < end; k++) {
+        if (ext) {
+          const cch = t16(q);
+          strs.push(utf16le(table, q + 2, cch * 2));
+          q += 2 + cch * 2 + extra;
+        } else {
+          const cch = table[q];
+          strs.push(latin1(table, q + 1, Math.min(end, q + 1 + cch)));
+          q += 1 + cch + extra;
+        }
+      }
+      return strs;
+    }
+    const savedBy = sttb(71);
+    for (let k = 0; k + 1 < savedBy.length; k += 2) {
+      out.add('Saved by', savedBy[k], 'person');
+      out.add('Saved to', savedBy[k + 1], 'path');
+    }
+    const assoc = sttb(32);
+    if (assoc[1]) out.add('Attached template', assoc[1], 'path');
+    sttb(51).filter(s => s && s !== 'Unknown').forEach(s => out.add('Tracked change by', s, 'person'));
+    const [fc, lcb] = pair(36);  // comment authors: a run of (cch, UTF-16 chars)
+    if (lcb && fc + lcb <= table.length) {
+      for (let q = fc, k = 0; q + 2 <= fc + lcb && k < 1000; k++) {
+        const cch = t16(q);
+        out.add('Comment author', utf16le(table, q + 2, cch * 2), 'person');
+        q += 2 + cch * 2;
+      }
+    }
+  }
+
+  // Excel 97-2003: the WRITEACCESS record holds the user name of whoever last saved the file.
+  function excelExtras(cfb, out, notes) {
+    const biff8 = cfb.has('Workbook');
+    const wb = cfb.read(biff8 ? 'Workbook' : 'Book');
+    if (!wb) return;
+    const dv = new DataView(wb.buffer, wb.byteOffset, wb.byteLength);
+    for (let p = 0, k = 0; p + 4 <= wb.length && k < 500; k++) {
+      const type = dv.getUint16(p, true);
+      const len = dv.getUint16(p + 2, true);
+      const body = wb.subarray(p + 4, Math.min(wb.length, p + 4 + len));
+      if (type === 0x002F) notes.push('This workbook is password-protected; its contents are encrypted.');
+      if (type === 0x005C && body.length >= 2) {
+        let name;
+        if (biff8 && body.length >= 3) {
+          const cch = body[0] | (body[1] << 8);
+          name = body[2] & 1 ? utf16le(body, 3, cch * 2) : latin1(body, 3, Math.min(body.length, 3 + cch));
+        } else {
+          name = latin1(body, 1, Math.min(body.length, 1 + body[0]));
+        }
+        out.add('Last saved by (Excel user name)', name.trim(), 'person');
+        break;
+      }
+      if (type === 0x0085) break;  // sheet list: WRITEACCESS always comes before it
+      p += 4 + len;
+    }
+  }
+
+  // PowerPoint 97-2003: the "Current User" stream names whoever last saved the file.
+  function powerpointExtras(cfb, out) {
+    const cu = cfb.read('Current User');
+    if (!cu || cu.length < 28) return;
+    const dv = new DataView(cu.buffer, cu.byteOffset, cu.byteLength);
+    if (dv.getUint16(2, true) !== 0x0FF6) return;
+    const len = Math.min(dv.getUint16(20, true), 255);
+    const ansi = latin1(cu, 28, Math.min(cu.length, 28 + len));
+    const uni = 28 + len + 4 + len * 2 <= cu.length ? utf16le(cu, 28 + len + 4, len * 2) : '';
+    out.add('Last saved by (PowerPoint user name)', (uni || ansi).trim(), 'person');
+  }
+
+  function parseOle(bytes, out, notes) {
+    const cfb = readCfb(bytes);
+    let type = 'ole';
+    if (cfb.has('WordDocument')) type = 'doc';
+    else if (cfb.has('Workbook') || cfb.has('Book')) type = 'xls';
+    else if (cfb.has('PowerPoint Document')) type = 'ppt';
+    if (cfb.has('EncryptedPackage')) {
+      notes.push('This is a password-protected Office file; its metadata is encrypted.');
+      return type;
+    }
+    oleProperties(cfb, out);
+    if (type === 'doc') wordExtras(cfb, out, notes);
+    else if (type === 'xls') excelExtras(cfb, out, notes);
+    else if (type === 'ppt') powerpointExtras(cfb, out);
+    else notes.push('This is a compound file (like .msg or .msi), not a Word, Excel or PowerPoint file. Only its document properties were read.');
+    return type;
+  }
+
+  // --- HEIC / AVIF (ISO base media file format) ----------------------------------------------
+  // Photos keep EXIF (camera, GPS) and XMP as "items" listed in meta/iinf and located by meta/iloc.
+
+  const HEIF_BRANDS = /^(heic|heix|hevc|hevx|heim|heis|hevm|hevs|mif1|msf1|avif|avis)$/;
+
+  function boxes(b, start, end) {
+    const dv = new DataView(b.buffer, b.byteOffset, b.byteLength);
+    const out = [];
+    let p = start;
+    while (p + 8 <= end && out.length < 10000) {
+      let size = dv.getUint32(p);
+      let hdr = 8;
+      if (size === 1) {
+        if (p + 16 > end) break;
+        size = dv.getUint32(p + 8) * 4294967296 + dv.getUint32(p + 12);
+        hdr = 16;
+      } else if (size === 0) {
+        size = end - p;
+      }
+      if (size < hdr || p + size > end) break;
+      out.push({type: latin1(b, p + 4, p + 8), start: p + hdr, end: p + size});
+      p += size;
+    }
+    return out;
+  }
+
+  function parseHeif(bytes, out, notes) {
+    const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+    const u16 = o => dv.getUint16(o);
+    const u32 = o => dv.getUint32(o);
+    const meta = boxes(bytes, 0, bytes.length).find(x => x.type === 'meta');
+    if (!meta) { notes.push('No metadata box found.'); return; }
+    const kids = boxes(bytes, meta.start + 4, meta.end);  // meta is a full box: skip version/flags
+    const cstring = q => { const z = bytes.indexOf(0, q); return z < 0 ? ['', bytes.length] : [latin1(bytes, q, z), z + 1]; };
+
+    const items = new Map();
+    const iinf = kids.find(x => x.type === 'iinf');
+    if (iinf) {
+      const v = bytes[iinf.start];
+      const first = iinf.start + 4 + (v === 0 ? 2 : 4);
+      for (const infe of boxes(bytes, first, iinf.end)) {
+        if (infe.type !== 'infe') continue;
+        const iv = bytes[infe.start];
+        if (iv < 2) continue;
+        let q = infe.start + 4;
+        const id = iv === 2 ? u16(q) : u32(q);
+        q += (iv === 2 ? 2 : 4) + 2;
+        const itemType = latin1(bytes, q, q + 4);
+        q += 4;
+        let contentType = '';
+        q = cstring(q)[1];                      // item name
+        if (itemType === 'mime') contentType = cstring(q)[0];
+        items.set(id, {type: itemType, contentType});
+      }
+    }
+
+    const locs = new Map();
+    const iloc = kids.find(x => x.type === 'iloc');
+    if (iloc) {
+      const v = bytes[iloc.start];
+      let q = iloc.start + 4;
+      const offSize = bytes[q] >> 4, lenSize = bytes[q] & 15, baseSize = bytes[q + 1] >> 4;
+      const idxSize = v === 1 || v === 2 ? bytes[q + 1] & 15 : 0;
+      q += 2;
+      const readN = n => {
+        const val = n === 4 ? u32(q) : n === 8 ? u32(q) * 4294967296 + u32(q + 4) : 0;
+        q += n;
+        return val;
+      };
+      const count = v < 2 ? u16(q) : u32(q);
+      q += v < 2 ? 2 : 4;
+      for (let k = 0; k < count && q < iloc.end; k++) {
+        const id = v < 2 ? u16(q) : u32(q);
+        q += v < 2 ? 2 : 4;
+        let method = 0;
+        if (v === 1 || v === 2) { method = u16(q) & 15; q += 2; }
+        q += 2;                                 // data reference index
+        const base = readN(baseSize);
+        const extents = [];
+        const ec = u16(q);
+        q += 2;
+        for (let e = 0; e < ec && e < 64; e++) {
+          if (idxSize) readN(idxSize);
+          const eo = readN(offSize);
+          extents.push([base + eo, readN(lenSize)]);
+        }
+        locs.set(id, {method, extents});
+      }
+    }
+    const idat = kids.find(x => x.type === 'idat');
+
+    function itemData(id) {
+      const loc = locs.get(id);
+      if (!loc) return null;
+      const origin = loc.method === 1 ? (idat ? idat.start : -1) : 0;
+      if (origin < 0 || loc.method > 1) return null;
+      const parts = loc.extents.map(([o, l]) => bytes.subarray(origin + o, Math.min(bytes.length, origin + o + (l || MAX_INFLATE))));
+      return concat(parts, parts.reduce((n, x) => n + x.length, 0));
+    }
+
+    for (const [id, item] of items) {
+      if (item.type === 'Exif') {
+        const data = itemData(id);
+        if (!data || data.length < 4) continue;
+        let t = data.subarray(4 + new DataView(data.buffer, data.byteOffset, data.byteLength).getUint32(0));
+        if (latin1(t, 0, Math.min(6, t.length)) === 'Exif\0\0') t = t.subarray(6);
+        parseTiff(t, out);
+      } else if (item.type === 'mime' && /rdf\+xml|xmp/i.test(item.contentType)) {
+        const data = itemData(id);
+        if (data) parseXmp(utf8(data), out);
+      }
+    }
+  }
+
   // --- entry points -----------------------------------------------------------------------
 
   function sniff(bytes) {
@@ -755,6 +1198,11 @@
     if (head.startsWith('\xFF\xD8\xFF')) return 'jpeg';
     if (head.startsWith('\x89PNG\r\n\x1a\n')) return 'png';
     if (head.startsWith('\xD0\xCF\x11\xE0\xA1\xB1\x1A\xE1')) return 'ole';
+    if (head.slice(4, 8) === 'ftyp') {
+      const brands = [head.slice(8, 12)];
+      for (let k = 16; k + 4 <= Math.min(head.length, 8 + new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength).getUint32(0)); k += 4) brands.push(head.slice(k, k + 4));
+      if (brands.some(b => HEIF_BRANDS.test(b))) return /^avi[fs]$/.test(brands[0]) ? 'avif' : 'heic';
+    }
     if (head.includes('%PDF-')) return 'pdf';  // the header may follow some junk bytes
     return 'unknown';
   }
@@ -773,8 +1221,9 @@
       else if (type === 'zip') type = await parseZip(bytes, out, notes);
       else if (type === 'jpeg') parseJpeg(bytes, out);
       else if (type === 'png') parsePng(bytes, out);
-      else if (type === 'ole') notes.push('Older Office formats (.doc, .xls, .ppt) aren’t supported yet. Save as .docx/.xlsx/.pptx to check them, or use exiftool.');
-      else notes.push('dorkface reads PDF, Word/Excel/PowerPoint (.docx, .xlsx, .pptx), OpenDocument, JPEG and PNG files.');
+      else if (type === 'ole') type = parseOle(bytes, out, notes);
+      else if (type === 'heic' || type === 'avif') parseHeif(bytes, out, notes);
+      else notes.push('dorkface reads PDF, Word, Excel and PowerPoint (old and new formats), OpenDocument, JPEG, PNG and HEIC files.');
       derive(out);
     } catch (e) {
       error = e && e.message && !/^(too deep|unterminated|bad dict|unexpected)/.test(e.message)

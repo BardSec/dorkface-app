@@ -10,6 +10,7 @@ from pathlib import Path
 
 import pytest
 
+import legacy_samples as legacy
 from conftest import NODE
 
 RUNNER = Path(__file__).parent / "js" / "run_meta.js"
@@ -455,7 +456,7 @@ def test_specific_messages():
     out = run([("empty.pdf", b""), ("legacy.doc", b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1" + b"\0" * 600),
                ("x.txt", b"hello")])["results"]
     assert "empty" in out[0]["error"]
-    assert "Older Office" in out[1]["notes"][0]
+    assert "damaged" in out[1]["error"]  # an OLE signature followed by zeros
     assert "reads PDF" in out[2]["notes"][0]
 
 
@@ -495,4 +496,134 @@ def test_csv_escapes_formulas_and_quotes():
     assert csv.startswith('\ufeff"file","type","field","value","kind"\r\n')
     assert '"\'=HYPERLINK(""http://x"")"' in csv
     assert '"\'-2+3"' in csv and '"\'@SUM"' in csv
-    assert '"bad.doc","Older Office file","Note"' in csv
+    assert '"bad.doc","Compound file","Error"' in csv
+
+
+# --- older Office formats (OLE2 compound files) ----------------------------------------------
+
+def _common_ole_fields(r, app):
+    f = fields(r)
+    assert ("Title", "Board minutes", "other") in f
+    assert ("Author", "jsmith", "person") in f
+    assert ("Last modified by", "Jane Smith", "person") in f
+    assert ("Keywords", "budget; draft", "other") in f
+    assert ("Template", "Normal.dotm", "other") in f
+    assert ("Revision", "12", "other") in f
+    assert ("Editing time (minutes)", "95", "other") in f
+    assert ("Created", "2012-03-04T05:06:07Z", "date") in f
+    assert ("Modified", "2013-01-02T00:00:00Z", "date") in f
+    assert ("Category", "Finance", "other") in f
+    assert ("Manager", "Pat Boss", "person") in f
+    assert ("Company", "Example Corp", "org") in f
+    assert ("Application", app, "software") in f
+    assert ("Custom: Project", "Phoenix", "other") in f
+    assert ("Custom: Share", "\\\\fs02\\projects\\phoenix", "other") in f
+    assert "fs02" in values(r, "server")
+
+
+def test_doc():
+    r = one("plan.doc", legacy.doc())
+    assert r["type"] == "doc" and r["typeLabel"] == "Word (.doc)" and r["error"] is None, r
+    _common_ole_fields(r, "Microsoft Office Word 14.0")
+    f = fields(r)
+    # Word's "saved by" list: who saved the file, and where, for the last saves
+    assert ("Saved by", "jsmith", "person") in f and ("Saved by", "Jane Smith", "person") in f
+    assert ("Saved to", "C:\\Users\\jsmith\\Documents\\Plan.doc", "path") in f
+    assert ("Saved to", "\\\\fs01\\shared\\Plan.doc", "path") in f
+    assert ("Attached template", "C:\\Users\\jsmith\\AppData\\Roaming\\Microsoft\\Templates\\Normal.dotm", "path") in f
+    assert ("Tracked change by", "Bob Reviewer", "person") in f
+    assert not any(x[0] == "Tracked change by" and x[1] == "Unknown" for x in f)
+    assert ("Comment author", "Carol Commenter", "person") in f
+    assert "fs01" in values(r, "server")
+
+
+def test_doc_password_protected():
+    r = one("locked.doc", legacy.doc(encrypted=True))
+    assert any("password-protected" in n for n in r["notes"])
+    assert "Jane Smith" in values(r, "person")           # summary properties are stored unencrypted
+    assert not any(f["label"] == "Saved by" for f in r["fields"])
+
+
+@pytest.mark.parametrize("unicode_name,expected", [(False, "Dana Doe"), (True, "Zoë Ünicode")])
+def test_xls(unicode_name, expected):
+    r = one("budget.xls", legacy.xls(unicode_name))
+    assert r["type"] == "xls" and r["typeLabel"] == "Excel (.xls)" and r["error"] is None, r
+    _common_ole_fields(r, "Microsoft Excel 12.0")
+    assert ("Last saved by (Excel user name)", expected, "person") in fields(r)
+
+
+def test_ppt():
+    r = one("deck.ppt", legacy.ppt())
+    assert r["type"] == "ppt" and r["typeLabel"] == "PowerPoint (.ppt)" and r["error"] is None, r
+    _common_ole_fields(r, "Microsoft Office PowerPoint 15.0")
+    assert ("Last saved by (PowerPoint user name)", "Eve Presenter", "person") in fields(r)
+
+
+def test_other_compound_file():
+    r = one("mail.msg", legacy.msg())
+    assert r["type"] == "ole" and any("not a Word, Excel or PowerPoint" in n for n in r["notes"])
+    assert "Jane Smith" in values(r, "person")
+
+
+@pytest.mark.parametrize("builder", [legacy.doc, legacy.xls, legacy.ppt])
+def test_truncated_compound_files_never_crash(builder):
+    data = builder()
+    for cut in (520, 1024, len(data) // 2, len(data) - 100):
+        r = one("cut", data[:cut])
+        assert r["error"] or r["fields"] is not None
+
+
+# --- HEIC / AVIF ------------------------------------------------------------------------------
+
+@pytest.mark.parametrize("in_idat", [False, True])
+def test_heic(in_idat):
+    r = one("IMG_0001.HEIC", legacy.heif(tiff(), in_idat=in_idat))
+    assert r["type"] == "heic" and r["typeLabel"] == "HEIC" and r["error"] is None, r
+    f = fields(r)
+    assert ("Camera", "Apple iPhone 12", "device") in f
+    assert ("GPS position", "35.755000, -83.975000", "location") in f
+    assert ("Taken", "2023:05:01 12:00:00", "date") in f
+    assert ("Author (XMP)", "Ivy Phone", "person") in f
+
+
+def test_avif():
+    r = one("photo.avif", legacy.heif(tiff(le=True), brand=b"avif"))
+    assert r["type"] == "avif"
+    assert ("GPS position", "35.755000, -83.975000", "location") in fields(r)
+
+
+def test_other_iso_media_is_not_heic():
+    mp4 = struct.pack(">I", 20) + b"ftypisom" + struct.pack(">I", 0) + b"isommp41"
+    r = one("clip.mp4", mp4 + b"\0" * 100)
+    assert r["type"] == "unknown"
+
+
+def test_truncated_heic_never_crashes():
+    data = legacy.heif(tiff())
+    for cut in (30, 60, 120, len(data) - 40):
+        r = one("cut.heic", data[:cut])
+        assert r["error"] or r["fields"] is not None
+
+
+# --- files written by real encoders (tests/fixtures/real/README.md) ---------------------------
+
+REAL = Path(__file__).parent / "fixtures" / "real"
+
+
+def test_real_word97_doc_from_textutil():
+    r = one("real.doc", (REAL / "real.doc").read_bytes())
+    assert r["type"] == "doc" and r["error"] is None
+    f = fields(r)
+    assert ("Author", "Real Author", "person") in f
+    assert ("Company", "Real Company", "org") in f
+    assert ("Title", "Real Title", "other") in f
+    assert ("Subject", "Real Subject", "other") in f
+
+
+def test_real_heic_from_apple_encoder():
+    r = one("real.heic", (REAL / "real.heic").read_bytes())
+    assert r["type"] == "heic" and r["error"] is None
+    f = fields(r)
+    assert ("Camera", "Apple iPhone 12", "device") in f
+    assert ("Camera serial number", "SN123", "device") in f
+    assert ("GPS position", "35.755000, -83.975000", "location") in f

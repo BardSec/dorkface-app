@@ -237,11 +237,11 @@
 
     <label class="drop-zone" id="m-drop" for="m-files">
       <span class="d-block fw-semibold">Drop files here, or click to choose</span>
-      <span class="d-block small text-body-secondary">PDF · Word, Excel, PowerPoint (.docx .xlsx .pptx) · OpenDocument ·
-        JPEG · PNG · up to {{ max_meta_mb }} MB each</span>
+      <span class="d-block small text-body-secondary">PDF · Word, Excel, PowerPoint (old and new formats) · OpenDocument ·
+        JPEG · PNG · HEIC · up to {{ max_meta_mb }} MB each</span>
     </label>
     <input class="visually-hidden" type="file" id="m-files" multiple
-           accept=".pdf,.docx,.docm,.dotx,.xlsx,.xlsm,.pptx,.odt,.ods,.odp,.jpg,.jpeg,.png">
+           accept=".pdf,.doc,.dot,.docx,.docm,.dotx,.xls,.xlt,.xlsx,.xlsm,.ppt,.pps,.pot,.pptx,.odt,.ods,.odp,.jpg,.jpeg,.png,.heic,.heif,.avif">
 
     <div class="d-flex flex-wrap align-items-center gap-2 my-3">
       <span class="small text-body-secondary me-auto" id="m-status" aria-live="polite"></span>
@@ -262,8 +262,8 @@
           <li>Drop them all here at once. The summary shows each name, username, server and program, and how many files it
             appears in.</li>
         </ol>
-        <p class="small text-body-secondary mb-0">Older Office formats (.doc, .xls, .ppt) aren't read yet; for those, try
-          <code>exiftool</code>.</p>
+        <p class="small text-body-secondary mb-0">Older .doc files are especially revealing: Word kept a list of the last
+          saves, with each user name and the full folder path the file was saved to.</p>
       </div>
       <div class="col-lg-6">
         <h2 class="h6">Removing metadata</h2>
