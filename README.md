@@ -10,16 +10,28 @@ A companion to [KQL Workbench](https://kqlworkbench.bardsec.com/) and
 
 ## Features
 
-- **Catalog** (`catalog.py`): 25 ready-made searches in 5 categories (exposed spreadsheets & data,
-  sensitive documents, config/logs/backups, login & admin pages, directory listings). Type your
+- **Catalog** (`catalog.py`): 28 ready-made searches in 6 categories (exposed spreadsheets & data,
+  sensitive documents, config/logs/backups, login & admin pages, directory listings, documents to
+  check for metadata). Type your
   domain once; each entry shows its query, a "Search on Google" link, Copy, Open in builder, and
   what to do if it finds something. Searching needs a domain: the catalog is for your own site.
 - **Builder**: `site:`, `filetype:` (allowlist), `intitle:`, `inurl:`, `intext:`, exact phrase,
   any-of (`OR` group), exclude (`-word`) and `after:`/`before:` dates. The query updates live, and
   each part is explained in plain English. Share links put the form in the URL fragment (`#b=…`),
   which browsers never send to servers.
+- **Metadata**: drop in files downloaded from your site (PDF, docx/xlsx/pptx, odt/ods/odp, JPEG,
+  PNG; up to 100 MB each, 500 per session) to see what they give away: authors, last editors,
+  comment and tracked-change authors, usernames from paths, software and versions, internal paths,
+  file servers, linked templates and workbooks, Excel's "saved from" folder, hidden sheets,
+  Microsoft 365 tenant IDs and sensitivity labels, cameras, serial numbers and GPS positions. A
+  summary groups each value across files. Files are read in the browser and never uploaded; results
+  aren't stored. CSV export. Older binary Office formats (.doc/.xls/.ppt) aren't read yet.
 - **Saved**: saved searches in `localStorage` (until deleted), history in `sessionStorage` (gone
   when the tab closes, for shared computers). Delete and clear-all controls.
+- **Export**: "Save report as PDF" (Saved and Metadata tabs) builds a print-only report of this
+  session's history, saved searches and metadata findings and opens the print dialog; "Save as PDF"
+  writes it, with the Google links still clickable. Also "Searches as CSV" and the metadata CSV. CSV
+  cells that start like a formula get a leading `'` (spreadsheet formula injection).
 
 ## How it works
 
@@ -33,8 +45,12 @@ A companion to [KQL Workbench](https://kqlworkbench.bardsec.com/) and
   very few results for operator-only searches (`site:tn.gov filetype:xlsx` showed 1 result, while adding
   `(salary OR payroll …)` showed many; `&filter=0` and a single common word didn't help). For the same
   reason every catalog entry with a file type also carries words (a test enforces it).
-- `src/dork.js` (tabs, builder, shared helpers), `src/catalog.js`, `src/saved.js` are the page.
-  DOM is built with `textContent` only.
+- `src/meta_core.js` reads metadata with no libraries: PDF Info dictionary and XMP (including
+  compressed object streams and cross-reference streams, via the browser's `DecompressionStream`),
+  zip-based Office/OpenDocument (a small zip reader), JPEG EXIF/GPS/XMP and PNG text chunks. Paths,
+  usernames, servers and email addresses are then pulled out of every value.
+- `src/dork.js` (tabs, builder, shared helpers), `src/catalog.js`, `src/saved.js`, `src/meta.js`,
+  `src/report.js` are the page. DOM is built with `textContent` only.
 - `build.py` renders `src/index.html` with the catalog as JSON and writes `dist/`: assets with
   `?v=<hash>`, a Pages `_headers` file and `404.html`.
 - **Content-Security-Policy** `default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:;
@@ -54,9 +70,11 @@ python3 -m http.server 8765 -d dist   # preview at http://localhost:8765 (the _h
 ```
 
 Tests: `test_core.py` (escaping, validation, site cleanup, dates, limits, all 1,024 field
-combinations, share links), `test_catalog.py` (every entry complete and builds), `test_site.py`
+combinations, share links, searches CSV), `test_catalog.py` (every entry complete and builds),
+`test_meta.py` (sample PDFs, Office/OpenDocument files, JPEGs and PNGs built with the stdlib, plus
+damaged and hostile files, summary and CSV escaping, through `tests/js/run_meta.js`), `test_site.py`
 (CSP and headers, no inline code, no external resources, no network or HTML-injection APIs in
-shipped JS, maxlength matches the core's limits).
+shipped JS, maxlength matches the core's limits, report wiring).
 
 To add a catalog entry, add it to `CATALOG` in `catalog.py`; the tests check it.
 

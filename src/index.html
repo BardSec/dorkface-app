@@ -245,6 +245,7 @@
 
     <div class="d-flex flex-wrap align-items-center gap-2 my-3">
       <span class="small text-body-secondary me-auto" id="m-status" aria-live="polite"></span>
+      <button class="btn btn-sm btn-outline-secondary" type="button" data-report="pdf" data-status="m-status">Save report as PDF</button>
       <button class="btn btn-sm btn-outline-secondary" type="button" id="m-csv" disabled>Download CSV</button>
       <button class="btn btn-sm btn-outline-danger" type="button" id="m-clear" disabled>Clear</button>
     </div>
@@ -281,6 +282,17 @@
 
   {# --------------------------------------------------------------- saved #}
   <section data-view="saved" hidden>
+    <div class="b-section d-flex flex-wrap align-items-center gap-2 mb-4">
+      <div class="me-auto">
+        <div class="b-head mb-1">Keep a record of this session</div>
+        <div class="small text-body-secondary">History and metadata findings are gone when you close the tab, and
+          nothing is kept on a server. Export them first if you want a record. The PDF opens your browser's print dialog: choose <strong>Save as PDF</strong>.</div>
+        <div class="small text-danger-emphasis mt-1" id="s-export-status" aria-live="polite"></div>
+      </div>
+      <button class="btn btn-sm btn-primary" type="button" data-report="pdf" data-status="s-export-status">Save report as PDF</button>
+      <button class="btn btn-sm btn-outline-secondary" type="button" data-report="searches-csv" data-status="s-export-status">Searches as CSV</button>
+    </div>
+
     <h1 class="h4 mb-1">Saved searches</h1>
     <p class="small text-body-secondary">Kept in this browser (<code>localStorage</code>) until you delete them. Nothing is
       sent anywhere. On a shared computer, clear them when you're done.</p>
@@ -306,6 +318,9 @@
     and <a href="https://wazuhworkbench.bardsec.com/" rel="noopener">Wazuh Workbench</a>.</p>
 </footer>
 
+{# Filled by report.js just before printing; only visible in print (dork.css). #}
+<div id="report"></div>
+
 <script type="application/json" id="dork-data">{{ data | tojson }}</script>
 <script src="{{ asset('dork_core.js') }}"></script>
 <script src="{{ asset('dork.js') }}"></script>
@@ -313,5 +328,6 @@
 <script src="{{ asset('catalog.js') }}"></script>
 <script src="{{ asset('meta_core.js') }}"></script>
 <script src="{{ asset('meta.js') }}"></script>
+<script src="{{ asset('report.js') }}"></script>
 </body>
 </html>

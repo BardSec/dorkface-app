@@ -12,6 +12,7 @@ process.stdin.on('end', () => {
     fromTemplate: (req.fromTemplate || []).map(([e, site]) => C.build(C.fromTemplate(e, site))),
     roundtrip: (req.roundtrip || []).map(s => C.decodeSpec(C.encodeSpec(s))),
     decode: (req.decode || []).map(t => C.decodeSpec(t)),
+    searchesCsv: req.searchesCsv ? C.searchesCsv(req.searchesCsv) : null,
     filetypes: C.FILETYPES.flatMap(g => g.types.map(t => t[0])),
     fields: C.FIELDS,
     wordFields: C.WORD_FIELDS,

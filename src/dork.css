@@ -96,3 +96,31 @@ label code, .b-head code { font-size: .8em; }
 .m-file .table { --bs-table-bg: transparent; }
 .m-kind { font-weight: 500; background: var(--bs-secondary-bg); color: var(--bs-body-color); border: 1px solid var(--bs-border-color); }
 .m-kind-person, .m-kind-email, .m-kind-location { border-color: var(--ut-orange); }
+
+/* Report (report.js): hidden on screen; when printing, it's the only thing on the page. */
+#report { display: none; }
+@media print {
+  body { background: #fff !important; }
+  body > :not(#report) { display: none !important; }
+  #report { display: block; color: #000; font-size: 10pt; line-height: 1.35; }
+  #report h1 { font-size: 18pt; margin: 0 0 .25rem; }
+  #report h2 { font-size: 13pt; margin: 1.1rem 0 .4rem; border-bottom: 2px solid #FF8200; padding-bottom: .15rem; }
+  #report h3 { font-size: 11pt; margin: .8rem 0 .3rem; break-after: avoid; }
+  #report p { margin: 0 0 .25rem; }
+  #report a { color: #000; text-decoration: underline; }
+  .r-header { border-bottom: 1px solid #999; padding-bottom: .5rem; margin-bottom: .5rem; }
+  .r-note { color: #444; font-style: italic; }
+  .r-mono { font-family: var(--bs-font-monospace); font-size: 9pt; word-break: break-word; }
+  .r-table { width: 100%; border-collapse: collapse; margin-bottom: .4rem; table-layout: auto; }
+  .r-table th, .r-table td { border: 1px solid #bbb; padding: .2rem .35rem; text-align: left; vertical-align: top; word-break: break-word; }
+  .r-table th { background: #eee; }
+  /* Same column widths in every table of a kind. */
+  .r-table { table-layout: fixed; }
+  .r-history th:first-child, .r-saved th:first-child { width: 11rem; }
+  .r-saved th:nth-child(2) { width: 22%; }
+  .r-summary th:last-child { width: 35%; }
+  .r-fields th:first-child { width: 30%; }
+  .r-table tr { break-inside: avoid; }
+  .r-file { break-inside: avoid-page; }
+  .r-break { break-before: page; }
+}

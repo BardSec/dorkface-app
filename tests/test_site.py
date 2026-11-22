@@ -109,3 +109,16 @@ def test_metadata_tab(built):
     # Scripts load in dependency order: helpers, then the metadata core, then its page.
     order = [html.index(f'src="{n}?') for n in ("dork_core.js", "dork.js", "meta_core.js", "meta.js")]
     assert order == sorted(order)
+
+
+def test_report_export(built):
+    out, html = built
+    assert '<div id="report"></div>' in html
+    assert html.count('data-report="pdf"') == 2          # Saved tab and Metadata tab
+    assert 'data-report="searches-csv"' in html
+    for m in re.finditer(r'data-status="([^"]+)"', html):
+        assert f'id="{m.group(1)}"' in html, m.group(1)
+    order = [html.index(f'src="{n}?') for n in ("saved.js", "meta.js", "report.js")]
+    assert order == sorted(order)
+    css = (out / "dork.css").read_text()
+    assert "#report { display: none; }" in css and "body > :not(#report) { display: none !important; }" in css

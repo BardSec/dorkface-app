@@ -19,7 +19,10 @@ dorkface helps non-experts build Google "dork" queries, mainly so they can audit
 | `#home` | Short landing overview: what a dork is, "use this on your own organization", links into the other tabs. |
 | `#catalog` | Ready-made dorks with plain-English labels, grouped by category (Exposed files, Login pages, Directory listings, Config & backups, Documents with sensitive words…). Each has fill-ins (usually just your domain), shows the query, and has "Search on Google", "Copy" and "Open in builder". **(decided)** |
 | `#builder` | The query builder form with a live preview. **(decided)** |
+| `#metadata` | Drop in downloaded files to see the metadata they expose (authors, usernames, software, internal paths, servers, GPS), summarized across files, read locally and never uploaded. **(decided, added 2026-11-22)** |
 | `#saved` | Saved searches and recent history, with delete and clear-all controls. **(decided)** |
+
+Export (added 2026-11-22): a print-only report of history, saved searches and metadata findings, saved as PDF through the browser's print dialog, plus CSV for searches and metadata.
 
 ### Builder fields
 | Field | Operator | Status |

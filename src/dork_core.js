@@ -202,7 +202,25 @@
     }
   }
 
-  const api = {build, cleanSite, fromTemplate, encodeSpec, decodeSpec, clean,
+  // Saved searches and history as CSV for Excel. rows: [{list, name, at, spec}]. Each spec is rebuilt,
+  // so the query and URL match what the builder would make. Cells that start like a formula
+  // (= + - @ tab CR) get a leading ' so a spreadsheet won't run them (exclude terms start with -).
+  function searchesCsv(rows) {
+    const cell = v => {
+      let s = String(v == null ? '' : v);
+      if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`;
+      return `"${s.replace(/"/g, '""')}"`;
+    };
+    const lines = [['list', 'name', 'when', 'query', 'google_url']];
+    for (const r of rows || []) {
+      const b = build(decodeSpec(encodeSpec((r && r.spec) || {})) || {});
+      const when = r && Number.isFinite(r.at) ? new Date(r.at).toISOString() : '';
+      lines.push([r && r.list, r && r.name, when, b.query, b.url || '']);
+    }
+    return '﻿' + lines.map(l => l.map(cell).join(',')).join('\r\n') + '\r\n';
+  }
+
+  const api = {build, cleanSite, fromTemplate, encodeSpec, decodeSpec, clean, searchesCsv,
     FIELDS, WORD_FIELDS: [...WORD_FIELDS], FILETYPES, MAX_WORDS, MAX_LEN, MAX_SITE_LEN, MAX_ITEMS, SEARCH_URL};
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.DorkCore = api;

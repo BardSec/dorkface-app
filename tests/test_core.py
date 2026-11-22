@@ -269,3 +269,29 @@ def test_queries_with_words_skip_the_tip():
     for field in run_core()["wordFields"]:
         assert not _tip(build(site="example.org", filetype="xlsx", **{field: "salary"})), field
     assert not _tip(build())
+
+
+# --- searches CSV ----------------------------------------------------------------
+
+def test_searches_csv():
+    rows = [
+        {"list": "history", "name": "", "at": 1700000000000, "spec": {"site": "example.org", "exclude": "news"}},
+        {"list": "saved", "name": "=cmd|' /C calc'!A0", "at": 1700000000000,
+         "spec": {"site": "example.org", "intitle": 'staff "dir"', "evil": "x"}},
+        {"list": "saved", "name": "broken", "at": None, "spec": {"filetype": "exe"}},
+    ]
+    csv = run_core(searchesCsv=rows)["searchesCsv"]
+    lines = csv.lstrip("﻿").split("\r\n")
+    assert lines[0] == '"list","name","when","query","google_url"'
+    assert lines[1].startswith('"history","","2023-11-14T22:13:20.000Z","site:example.org -news","https://www.google.com/search?q=')
+    # name is quoted and formula-guarded
+    assert lines[2].startswith('"saved","\'=cmd|\' /C calc\'!A0",')
+    assert '"site:example.org intitle:""staff dir"""' in lines[2]  # rebuilt, quotes stripped then CSV-escaped
+    assert "evil" not in csv
+    assert lines[3] == '"saved","broken","","",""'   # invalid spec: no query, no URL
+    assert csv.endswith("\r\n")
+
+
+def test_searches_csv_guards_exclude_only_queries():
+    csv = run_core(searchesCsv=[{"list": "history", "spec": {"exclude": "news"}}])["searchesCsv"]
+    assert '"\'-news"' in csv

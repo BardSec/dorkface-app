@@ -85,6 +85,7 @@ ASSETS = {
     "catalog.js": SRC / "catalog.js",
     "meta_core.js": SRC / "meta_core.js",
     "meta.js": SRC / "meta.js",
+    "report.js": SRC / "report.js",
     "theme.js": SRC / "theme.js",
     "dork.css": SRC / "dork.css",
     "favicon.svg": SRC / "favicon.svg",

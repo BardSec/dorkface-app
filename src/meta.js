@@ -162,5 +162,8 @@
     chain = chain.then(() => { results = []; render(); status(''); });
   });
 
+  // For the report (report.js).
+  window.DorkMetaPage = {results: () => results.slice()};
+
   render();
 })();

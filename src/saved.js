@@ -116,6 +116,6 @@
   window.addEventListener('storage', e => { if (e.key === SAVED_KEY || e.key === null) render(); });
   document.addEventListener('dork:view', e => { if (e.detail === 'saved') render(); });
 
-  window.DorkSaved = {save, addHistory};
+  window.DorkSaved = {save, addHistory, getSaved, getHistory};
   render();
 })();
