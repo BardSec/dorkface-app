@@ -29,28 +29,28 @@ CATALOG = [
     {
         "id": "spreadsheets",
         "category": "Exposed spreadsheets & data",
-        "label": "Excel spreadsheets on your site",
-        "description": "Every .xlsx file Google has indexed on your domain. Spreadsheets are the most common way "
-                       "rosters, budgets and exports end up public by accident.",
-        "fields": {"filetype": "xlsx"},
+        "label": "Excel spreadsheets with contact details",
+        "description": "Excel files with names, emails, phone numbers or addresses. Spreadsheets are the most "
+                       "common way contact lists, rosters and exports end up public by accident.",
+        "fields": {"filetype": "xlsx", "anyof": "name, email, phone, address"},
         "next": _SPREADSHEET_NEXT,
     },
     {
         "id": "old-spreadsheets",
         "category": "Exposed spreadsheets & data",
-        "label": "Older Excel files (.xls)",
-        "description": "Pre-2007 Excel files. Old uploads tend to be forgotten, and they're often from systems "
-                       "nobody maintains anymore.",
-        "fields": {"filetype": "xls"},
+        "label": "Older Excel files (.xls) with contact details",
+        "description": "Pre-2007 Excel files with names, emails, phone numbers or addresses. Old uploads tend to "
+                       "be forgotten, and they're often from systems nobody maintains anymore.",
+        "fields": {"filetype": "xls", "anyof": "name, email, phone, address"},
         "next": _SPREADSHEET_NEXT,
     },
     {
         "id": "csv-exports",
         "category": "Exposed spreadsheets & data",
         "label": "CSV exports",
-        "description": "CSV files are what most systems (SIS, HR, finance) export. One on a public page is "
-                       "usually a mistake.",
-        "fields": {"filetype": "csv"},
+        "description": "CSV files with names, emails or IDs. CSV is what most systems (HR, finance, CRM) export, "
+                       "so one on a public page is usually a mistake.",
+        "fields": {"filetype": "csv", "anyof": "name, email, phone, id"},
         "next": _SPREADSHEET_NEXT,
     },
     {
@@ -129,7 +129,7 @@ CATALOG = [
         "category": "Config, logs & backups",
         "label": ".env settings files",
         "description": "Web app settings files. They usually hold database passwords and API keys.",
-        "fields": {"filetype": "env"},
+        "fields": {"filetype": "env", "anyof": "DB_PASSWORD, APP_KEY, SECRET, API_KEY"},
         "next": "Rotate every key and password in the file, then remove it and block .env files on the web server.",
     },
     {
@@ -137,14 +137,14 @@ CATALOG = [
         "category": "Config, logs & backups",
         "label": "Database dumps (.sql)",
         "description": "Database exports left on a web server. They can contain a whole site's users and data.",
-        "fields": {"filetype": "sql"},
+        "fields": {"filetype": "sql", "anyof": "INSERT INTO, CREATE TABLE, password"},
     },
     {
         "id": "log-files",
         "category": "Config, logs & backups",
         "label": "Log files",
         "description": "Server and application logs, which can leak usernames, IP addresses and internal paths.",
-        "fields": {"filetype": "log"},
+        "fields": {"filetype": "log", "anyof": "error, password, username, login"},
     },
     {
         "id": "backup-files",
@@ -152,21 +152,21 @@ CATALOG = [
         "label": "Backup files (.bak)",
         "description": "Copies of files saved with a .bak extension. Web servers often serve these as plain text, "
                        "source code and all.",
-        "fields": {"filetype": "bak"},
+        "fields": {"filetype": "bak", "anyof": "password, database, username, config"},
     },
     {
         "id": "config-files",
         "category": "Config, logs & backups",
         "label": "Config files (.conf)",
-        "description": "Server and application configuration files.",
-        "fields": {"filetype": "conf"},
+        "description": "Server and application configuration files that mention passwords, hosts or keys.",
+        "fields": {"filetype": "conf", "anyof": "password, server, host, key"},
     },
     {
         "id": "scripts",
         "category": "Config, logs & backups",
         "label": "PowerShell scripts",
         "description": "Admin scripts posted to a web server. Check them for hard-coded passwords and server names.",
-        "fields": {"filetype": "ps1"},
+        "fields": {"filetype": "ps1", "anyof": "password, Credential, ConvertTo-SecureString"},
     },
 
     # --- Login & admin pages -----------------------------------------------------

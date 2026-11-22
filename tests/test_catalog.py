@@ -53,3 +53,12 @@ def test_queries_are_distinct():
     out = run_core(fromTemplate=[[e, "example.org"] for e in CATALOG])["fromTemplate"]
     queries = [r["query"] for r in out]
     assert len(queries) == len(set(queries))
+
+
+def test_file_type_searches_include_words():
+    """Google returns only a few results for site: + filetype: with no words, so every
+    file-type entry carries words that the risky version of that file would contain."""
+    words = set(run_core()["wordFields"])
+    for e in CATALOG:
+        if "filetype" in e["fields"]:
+            assert words & set(e["fields"]), e["id"]

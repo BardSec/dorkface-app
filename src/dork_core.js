@@ -28,6 +28,8 @@
 
   // Field order in the finished query (fixed, so output is predictable).
   const FIELDS = ['site', 'filetype', 'intitle', 'inurl', 'intext', 'phrase', 'anyof', 'exclude', 'after', 'before'];
+  // Fields that give Google words to search for (the rest only narrow the results).
+  const WORD_FIELDS = new Set(['intitle', 'intext', 'phrase', 'anyof']);
 
   // Strip characters that could break out of a quoted value or the query:
   // straight and curly double quotes, control characters. Then collapse whitespace.
@@ -159,6 +161,12 @@
     if (query && !parts.some(p => p.field === 'site')) {
       warnings.push('No site: set, so this searches the whole web. Add your domain to audit your own organization.');
     }
+    // Google returns very few results for searches made only of operators (e.g. site:x filetype:xlsx
+    // can show 1 result while adding (salary OR payroll) shows many). Words give it something to rank.
+    if (query && !parts.some(p => WORD_FIELDS.has(p.field))) {
+      warnings.push('Google often returns only a few results for searches with no words in them. ' +
+        'Add words you’d expect to find (Any of these, Exact phrase or Page text) for a fuller list.');
+    }
     const url = query && !errors.length ? SEARCH_URL + encodeURIComponent(query) : null;
     return {query, url, parts, errors, warnings};
   }
@@ -195,7 +203,7 @@
   }
 
   const api = {build, cleanSite, fromTemplate, encodeSpec, decodeSpec, clean,
-    FIELDS, FILETYPES, MAX_WORDS, MAX_LEN, MAX_SITE_LEN, MAX_ITEMS, SEARCH_URL};
+    FIELDS, WORD_FIELDS: [...WORD_FIELDS], FILETYPES, MAX_WORDS, MAX_LEN, MAX_SITE_LEN, MAX_ITEMS, SEARCH_URL};
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.DorkCore = api;
 })(this);

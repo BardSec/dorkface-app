@@ -14,6 +14,7 @@ process.stdin.on('end', () => {
     decode: (req.decode || []).map(t => C.decodeSpec(t)),
     filetypes: C.FILETYPES.flatMap(g => g.types.map(t => t[0])),
     fields: C.FIELDS,
+    wordFields: C.WORD_FIELDS,
     limits: {words: C.MAX_WORDS, len: C.MAX_LEN, items: C.MAX_ITEMS},
   }));
 });

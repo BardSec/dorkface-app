@@ -250,3 +250,22 @@ def test_bad_share_links_are_ignored():
     assert out[1] == {}            # {}
     assert out[2] == {}            # [1]
     assert out[3] == {}            # {"site": 5}: non-strings dropped
+
+
+# --- operator-only tip -----------------------------------------------------------
+
+def _tip(r):
+    return any("no words in them" in w for w in r["warnings"])
+
+
+def test_operator_only_queries_get_the_words_tip():
+    # Google returns very few results for e.g. site:x filetype:xlsx with no words.
+    assert _tip(build(site="example.org", filetype="xlsx"))
+    assert _tip(build(site="example.org", inurl="admin", exclude="news"))
+    assert _tip(build(site="example.org", after="2024-01-01"))
+
+
+def test_queries_with_words_skip_the_tip():
+    for field in run_core()["wordFields"]:
+        assert not _tip(build(site="example.org", filetype="xlsx", **{field: "salary"})), field
+    assert not _tip(build())

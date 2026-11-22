@@ -29,6 +29,10 @@ A companion to [KQL Workbench](https://kqlworkbench.bardsec.com/) and
   `site:` input is cleaned (scheme, user info, path, port, `*.` and trailing dots removed,
   lowercased) and must be an ASCII domain name; file types come from an allowlist; every field has a
   length limit; the URL is encoded once; Google's ~32-word limit gets a warning.
+  Queries with no words (only `site:`, `filetype:`, `inurl:`…) get a tip to add some: Google returns
+  very few results for operator-only searches (`site:tn.gov filetype:xlsx` showed 1 result, while adding
+  `(salary OR payroll …)` showed many; `&filter=0` and a single common word didn't help). For the same
+  reason every catalog entry with a file type also carries words (a test enforces it).
 - `src/dork.js` (tabs, builder, shared helpers), `src/catalog.js`, `src/saved.js` are the page.
   DOM is built with `textContent` only.
 - `build.py` renders `src/index.html` with the catalog as JSON and writes `dist/`: assets with
