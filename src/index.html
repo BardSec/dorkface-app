@@ -1,0 +1,254 @@
+<!doctype html>
+{# Rendered by build.py. No server-side logic: the output is a static page. #}
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  {# Same policy is sent as a header (_headers); the meta copy also covers saved/offline copies. #}
+  <meta http-equiv="Content-Security-Policy" content="{{ csp }}">
+  <meta name="referrer" content="no-referrer">
+  <title>dorkface · Google dork builder for auditing your own site</title>
+  <meta name="description" content="Build Google search operators (site:, filetype:, intitle:…) from a simple form, or start from ready-made searches that find exposed files on your own domain. Runs entirely in your browser.">
+  <link rel="icon" href="{{ asset('favicon.svg') }}" type="image/svg+xml">
+  <link rel="stylesheet" href="{{ asset('vendor/bootstrap-5.3.3.min.css') }}">
+  <link rel="stylesheet" href="{{ asset('dork.css') }}">
+  <script src="{{ asset('theme.js') }}"></script>
+</head>
+<body>
+<nav class="navbar navbar-dork">
+  <div class="container-xl">
+    <a class="navbar-brand fw-semibold" href="#home"><span class="brand-mark">site:</span>dorkface</a>
+    <div class="d-flex align-items-center gap-3" role="tablist">
+      <a class="nav-dork-link" href="#catalog" data-tab="catalog" role="tab">Catalog</a>
+      <a class="nav-dork-link" href="#builder" data-tab="builder" role="tab">Builder</a>
+      <a class="nav-dork-link" href="#saved" data-tab="saved" role="tab">Saved</a>
+      <span class="badge local-badge d-none d-sm-inline" title="Nothing you type leaves this page">runs in your browser</span>
+    </div>
+  </div>
+</nav>
+
+<noscript>
+  <div class="container-xl pt-4"><div class="alert alert-warning mb-0">dorkface builds searches in your browser, so it needs
+    JavaScript turned on. Nothing you type is ever sent to us.</div></div>
+</noscript>
+
+<main class="container-xl py-4">
+
+  {# ---------------------------------------------------------------- home #}
+  <section data-view="home" hidden>
+    <div class="home-hero">
+      <h1 class="display-6 fw-semibold mb-2">What has Google found on your site?</h1>
+      <p class="lead text-body-secondary mb-0">Google indexes far more than web pages: spreadsheets, PDFs, backups, login
+        screens and open folders. dorkface builds the search operators (<code>site:</code>, <code>filetype:</code>,
+        <code>intitle:</code>…) that find them, so you can audit your own organization without memorizing the syntax.</p>
+    </div>
+    <div class="row g-3 mb-4">
+      <div class="col-md-4">
+        <a class="home-card" href="#catalog">
+          <svg class="home-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16M4 12h16M4 19h10"/></svg>
+          <h2 class="h5">Catalog</h2>
+          <p>{{ catalog_count }} ready-made searches: exposed spreadsheets, sensitive documents, config files, login pages
+            and open folders. Type your domain once and run them one by one.</p>
+          <span class="home-go">Browse the catalog →</span>
+        </a>
+      </div>
+      <div class="col-md-4">
+        <a class="home-card" href="#builder">
+          <svg class="home-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M4 12h16M4 17h7"/><circle cx="17" cy="7" r="2"/><circle cx="14" cy="17" r="2"/></svg>
+          <h2 class="h5">Builder</h2>
+          <p>Fill in a form and watch the query take shape, with each part explained in plain English. Share it as a
+            link or save it for next time.</p>
+          <span class="home-go">Open the builder →</span>
+        </a>
+      </div>
+      <div class="col-md-4">
+        <a class="home-card" href="#saved">
+          <svg class="home-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12v18l-6-4-6 4z"/></svg>
+          <h2 class="h5">Saved</h2>
+          <p>Searches you saved and the ones you ran in this tab. They stay in this browser only and can be cleared
+            any time.</p>
+          <span class="home-go">See saved searches →</span>
+        </a>
+      </div>
+    </div>
+
+    <div class="row g-4">
+      <div class="col-lg-6">
+        <h2 class="h5">Use it on your own organization</h2>
+        <p class="text-body-secondary small mb-2">These searches show what anyone can already find, but that doesn't make it
+          fair game. Search domains you're responsible for, or have permission to test.</p>
+        <ul class="small text-body-secondary">
+          <li>Don't download, keep or share personal data you come across on someone else's site. Tell the owner instead.</li>
+          <li>Google's results lag behind: a file may already be gone, or still cached after you delete it.</li>
+          <li>No results doesn't mean nothing is exposed. Google only shows what it has indexed.</li>
+        </ul>
+      </div>
+      <div class="col-lg-6">
+        <h2 class="h5">Found something?</h2>
+        <ol class="small text-body-secondary">
+          <li>Remove the file, or put it behind a sign-in. If it holds passwords or keys, change them first.</li>
+          <li>Check whether it held student or staff data. If so, follow your district's incident process (FERPA).</li>
+          <li>Ask Google to drop it: in <strong>Google Search Console → Removals</strong> for a site you own, or with
+            Google's <strong>Refresh outdated content</strong> tool for one you don't.</li>
+          <li>Fix the cause: turn off directory listings, and block <code>.env</code>, <code>.bak</code> and <code>.sql</code>
+            files on the web server.</li>
+        </ol>
+      </div>
+    </div>
+  </section>
+
+  {# ------------------------------------------------------------- catalog #}
+  <section data-view="catalog" hidden>
+    <h1 class="h4 mb-3">Search catalog</h1>
+    <div class="b-section">
+      <label class="form-label fw-semibold mb-1" for="c-site">Your domain</label>
+      <input class="form-control font-monospace" id="c-site" maxlength="{{ max_site }}" autocomplete="off" spellcheck="false"
+             placeholder="yourdistrict.org">
+      <div class="form-text" id="c-site-help">Fills <code>site:</code> in every search below. A full web address works too.</div>
+      <div class="invalid-feedback" id="c-site-error"></div>
+    </div>
+    <div class="d-flex flex-wrap gap-2 align-items-center mb-3">
+      <input class="form-control form-control-sm c-filter" id="c-filter" type="search" placeholder="Filter searches" aria-label="Filter searches">
+      <div class="d-flex flex-wrap gap-1" id="c-cats"></div>
+    </div>
+    <div id="c-list"></div>
+  </section>
+
+  {# ------------------------------------------------------------- builder #}
+  <section data-view="builder" hidden>
+    <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+      <h1 class="h4 m-0 me-auto">Query builder</h1>
+      <button class="btn btn-sm btn-outline-secondary" type="button" id="b-clear">Clear form</button>
+    </div>
+    <div class="row g-4">
+      <div class="col-lg-7">
+        <form id="b-form" autocomplete="off" novalidate>
+          <div class="b-section">
+            <div class="b-head">Where to look</div>
+            <div class="mb-3">
+              <label class="form-label" for="b-site">Site or domain <code>site:</code></label>
+              <input class="form-control font-monospace" id="b-site" name="site" maxlength="{{ max_site }}" spellcheck="false" placeholder="yourdistrict.org">
+              <div class="form-text">Includes every subdomain. A full web address works too; the path is dropped.</div>
+              <div class="invalid-feedback" data-error="site"></div>
+            </div>
+            <div>
+              <label class="form-label" for="b-filetype">File type <code>filetype:</code></label>
+              <select class="form-select" id="b-filetype" name="filetype"><option value="">Any type</option></select>
+              <div class="invalid-feedback" data-error="filetype"></div>
+            </div>
+          </div>
+
+          <div class="b-section">
+            <div class="b-head">Words</div>
+            <div class="row g-3">
+              <div class="col-sm-6">
+                <label class="form-label" for="b-intitle">In the page title <code>intitle:</code></label>
+                <input class="form-control" id="b-intitle" name="intitle" maxlength="{{ max_len }}" placeholder="index of">
+                <div class="invalid-feedback" data-error="intitle"></div>
+              </div>
+              <div class="col-sm-6">
+                <label class="form-label" for="b-inurl">In the web address <code>inurl:</code></label>
+                <input class="form-control" id="b-inurl" name="inurl" maxlength="{{ max_len }}" placeholder="admin">
+                <div class="invalid-feedback" data-error="inurl"></div>
+              </div>
+              <div class="col-sm-6">
+                <label class="form-label" for="b-intext">In the page text <code>intext:</code></label>
+                <input class="form-control" id="b-intext" name="intext" maxlength="{{ max_len }}" placeholder="password">
+                <div class="invalid-feedback" data-error="intext"></div>
+              </div>
+              <div class="col-sm-6">
+                <label class="form-label" for="b-phrase">Exact phrase <code>"…"</code></label>
+                <input class="form-control" id="b-phrase" name="phrase" maxlength="{{ max_len }}" placeholder="internal use only">
+                <div class="invalid-feedback" data-error="phrase"></div>
+              </div>
+              <div class="col-sm-6">
+                <label class="form-label" for="b-anyof">Any of these <code>OR</code></label>
+                <input class="form-control" id="b-anyof" name="anyof" maxlength="{{ max_len }}" placeholder="ssn, date of birth">
+                <div class="form-text">Separate with commas.</div>
+                <div class="invalid-feedback" data-error="anyof"></div>
+              </div>
+              <div class="col-sm-6">
+                <label class="form-label" for="b-exclude">Leave out <code>-word</code></label>
+                <input class="form-control" id="b-exclude" name="exclude" maxlength="{{ max_len }}" placeholder="news, press release">
+                <div class="form-text">Separate with commas.</div>
+                <div class="invalid-feedback" data-error="exclude"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="b-section">
+            <div class="b-head">When <span class="fw-normal text-body-secondary small">(optional; based on Google's dates, which are approximate)</span></div>
+            <div class="row g-3">
+              <div class="col-sm-6">
+                <label class="form-label" for="b-after">After <code>after:</code></label>
+                <input class="form-control" type="date" id="b-after" name="after">
+                <div class="invalid-feedback" data-error="after"></div>
+              </div>
+              <div class="col-sm-6">
+                <label class="form-label" for="b-before">Before <code>before:</code></label>
+                <input class="form-control" type="date" id="b-before" name="before">
+                <div class="invalid-feedback" data-error="before"></div>
+              </div>
+            </div>
+          </div>
+        </form>
+      </div>
+
+      <div class="col-lg-5">
+        <div class="preview-sticky">
+          <div class="code-block mb-2">
+            <pre class="mb-0 font-monospace" id="b-query"></pre>
+          </div>
+          <div class="d-flex flex-wrap gap-2 mb-3" id="b-actions"></div>
+          <div id="b-warnings"></div>
+          <div class="b-section" id="b-explain-box" hidden>
+            <div class="b-head">What this search does</div>
+            <ul class="list-unstyled small mb-0" id="b-explain"></ul>
+          </div>
+          <div class="b-section" id="b-save-box" hidden>
+            <label class="b-head d-block" for="b-save-name">Save this search</label>
+            <div class="input-group input-group-sm">
+              <input class="form-control" id="b-save-name" maxlength="80" placeholder="Name (optional)">
+              <button class="btn btn-outline-secondary" type="button" id="b-save">Save</button>
+            </div>
+            <div class="form-text">Saved in this browser only. Clear it any time from the Saved tab.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  {# --------------------------------------------------------------- saved #}
+  <section data-view="saved" hidden>
+    <h1 class="h4 mb-1">Saved searches</h1>
+    <p class="small text-body-secondary">Kept in this browser (<code>localStorage</code>) until you delete them. Nothing is
+      sent anywhere. On a shared computer, clear them when you're done.</p>
+    <div class="d-flex justify-content-end mb-2"><button class="btn btn-sm btn-outline-danger" type="button" id="s-clear-saved">Delete all saved</button></div>
+    <div id="s-saved" class="mb-4"></div>
+
+    <h2 class="h5 mb-1">History</h2>
+    <p class="small text-body-secondary">Searches you opened on Google from this tab. History is kept in
+      <code>sessionStorage</code>, so it disappears when you close the tab.</p>
+    <div class="d-flex justify-content-end mb-2"><button class="btn btn-sm btn-outline-danger" type="button" id="s-clear-history">Clear history</button></div>
+    <div id="s-history"></div>
+  </section>
+
+</main>
+
+<footer class="container-xl pb-4 small text-body-secondary">
+  <hr>
+  <p class="mb-1"><strong>Private by design.</strong> This is a static page: everything happens in your browser and nothing you
+    type is sent to us. The page's Content-Security-Policy (<code>connect-src 'none'</code>) stops it from making any network
+    requests at all, which you can confirm in your browser's developer tools. The only thing that leaves is the search you
+    choose to open on Google.</p>
+  <p class="mb-0">Not affiliated with Google. A companion to <a href="https://kqlworkbench.bardsec.com/" rel="noopener">KQL Workbench</a>
+    and <a href="https://wazuhworkbench.bardsec.com/" rel="noopener">Wazuh Workbench</a>.</p>
+</footer>
+
+<script type="application/json" id="dork-data">{{ data | tojson }}</script>
+<script src="{{ asset('dork_core.js') }}"></script>
+<script src="{{ asset('dork.js') }}"></script>
+<script src="{{ asset('saved.js') }}"></script>
+<script src="{{ asset('catalog.js') }}"></script>
+</body>
+</html>
