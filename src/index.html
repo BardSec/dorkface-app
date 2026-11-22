@@ -21,6 +21,7 @@
     <div class="d-flex align-items-center gap-3" role="tablist">
       <a class="nav-dork-link" href="#catalog" data-tab="catalog" role="tab">Catalog</a>
       <a class="nav-dork-link" href="#builder" data-tab="builder" role="tab">Builder</a>
+      <a class="nav-dork-link" href="#metadata" data-tab="metadata" role="tab">Metadata</a>
       <a class="nav-dork-link" href="#saved" data-tab="saved" role="tab">Saved</a>
       <span class="badge local-badge d-none d-sm-inline" title="Nothing you type leaves this page">runs in your browser</span>
     </div>
@@ -43,7 +44,7 @@
         <code>intitle:</code>…) that find them, so you can audit your own organization without memorizing the syntax.</p>
     </div>
     <div class="row g-3 mb-4">
-      <div class="col-md-4">
+      <div class="col-md-6 col-xl-3">
         <a class="home-card" href="#catalog">
           <svg class="home-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16M4 12h16M4 19h10"/></svg>
           <h2 class="h5">Catalog</h2>
@@ -52,7 +53,7 @@
           <span class="home-go">Browse the catalog →</span>
         </a>
       </div>
-      <div class="col-md-4">
+      <div class="col-md-6 col-xl-3">
         <a class="home-card" href="#builder">
           <svg class="home-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M4 12h16M4 17h7"/><circle cx="17" cy="7" r="2"/><circle cx="14" cy="17" r="2"/></svg>
           <h2 class="h5">Builder</h2>
@@ -61,7 +62,16 @@
           <span class="home-go">Open the builder →</span>
         </a>
       </div>
-      <div class="col-md-4">
+      <div class="col-md-6 col-xl-3">
+        <a class="home-card" href="#metadata">
+          <svg class="home-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></svg>
+          <h2 class="h5">Metadata</h2>
+          <p>Drop in files you downloaded from your site to see what's hidden inside: authors, usernames, software
+            versions, internal paths and servers, GPS positions. Read in your browser, never uploaded.</p>
+          <span class="home-go">Check documents →</span>
+        </a>
+      </div>
+      <div class="col-md-6 col-xl-3">
         <a class="home-card" href="#saved">
           <svg class="home-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12v18l-6-4-6 4z"/></svg>
           <h2 class="h5">Saved</h2>
@@ -218,6 +228,57 @@
     </div>
   </section>
 
+  {# ------------------------------------------------------------ metadata #}
+  <section data-view="metadata" hidden>
+    <h1 class="h4 mb-1">Document metadata</h1>
+    <p class="small text-body-secondary mb-3">Files carry details you can't see on the page: who wrote them, Windows
+      usernames, the software and versions used, internal folders and file servers, even GPS positions in photos. Drop in files
+      you downloaded from your site to see what they give away. Files are read in your browser and never uploaded.</p>
+
+    <label class="drop-zone" id="m-drop" for="m-files">
+      <span class="d-block fw-semibold">Drop files here, or click to choose</span>
+      <span class="d-block small text-body-secondary">PDF · Word, Excel, PowerPoint (.docx .xlsx .pptx) · OpenDocument ·
+        JPEG · PNG · up to {{ max_meta_mb }} MB each</span>
+    </label>
+    <input class="visually-hidden" type="file" id="m-files" multiple
+           accept=".pdf,.docx,.docm,.dotx,.xlsx,.xlsm,.pptx,.odt,.ods,.odp,.jpg,.jpeg,.png">
+
+    <div class="d-flex flex-wrap align-items-center gap-2 my-3">
+      <span class="small text-body-secondary me-auto" id="m-status" aria-live="polite"></span>
+      <button class="btn btn-sm btn-outline-secondary" type="button" id="m-csv" disabled>Download CSV</button>
+      <button class="btn btn-sm btn-outline-danger" type="button" id="m-clear" disabled>Clear</button>
+    </div>
+
+    <div id="m-summary"></div>
+    <div id="m-results" class="mb-4"></div>
+
+    <div class="row g-4">
+      <div class="col-lg-6">
+        <h2 class="h6">Collecting files to check</h2>
+        <ol class="small text-body-secondary">
+          <li>Run a search such as the catalog's <a href="#catalog">Documents to check for metadata</a> entries.</li>
+          <li>Download a batch of results: a range of years and departments gives the best picture.</li>
+          <li>Drop them all here at once. The summary shows each name, username, server and program, and how many files it
+            appears in.</li>
+        </ol>
+        <p class="small text-body-secondary mb-0">Older Office formats (.doc, .xls, .ppt) aren't read yet; for those, try
+          <code>exiftool</code>.</p>
+      </div>
+      <div class="col-lg-6">
+        <h2 class="h6">Removing metadata</h2>
+        <ul class="small text-body-secondary">
+          <li><strong>Word, Excel, PowerPoint:</strong> File → Info → Check for Issues → Inspect Document → Remove All,
+            before saving as PDF.</li>
+          <li><strong>Adobe Acrobat Pro:</strong> Redact → Sanitize Document (or Remove Hidden Information).</li>
+          <li><strong>Photos:</strong> <code>exiftool -all= photo.jpg</code>, or turn off location tagging in the phone's camera.
+            For PDFs, exiftool's changes can be undone, so use Acrobat or re-export instead.</li>
+          <li><strong>At the source:</strong> clear Author and Company in templates, and save published files from a
+            neutral folder rather than a personal one.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
   {# --------------------------------------------------------------- saved #}
   <section data-view="saved" hidden>
     <h1 class="h4 mb-1">Saved searches</h1>
@@ -250,5 +311,7 @@
 <script src="{{ asset('dork.js') }}"></script>
 <script src="{{ asset('saved.js') }}"></script>
 <script src="{{ asset('catalog.js') }}"></script>
+<script src="{{ asset('meta_core.js') }}"></script>
+<script src="{{ asset('meta.js') }}"></script>
 </body>
 </html>

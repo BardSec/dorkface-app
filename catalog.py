@@ -19,10 +19,14 @@ CATEGORIES = [
     "Config, logs & backups",
     "Login & admin pages",
     "Directory listings",
+    "Documents to check for metadata",
 ]
 
 _SPREADSHEET_NEXT = ("Open each result and check who should see it. If it holds personal data, remove it or put it "
                      "behind a sign-in, then ask Google to drop it (Search Console → Removals).")
+
+_META_NEXT = ("Download a batch of results and drop them on the Metadata tab to see the names, usernames, "
+              "software and internal paths they give away.")
 
 CATALOG = [
     # --- Exposed spreadsheets & data ---------------------------------------------
@@ -233,6 +237,34 @@ CATALOG = [
         "description": "Open listings of upload folders (WordPress and similar), where everything ever uploaded "
                        "is visible, including drafts.",
         "fields": {"intitle": "index of", "inurl": "uploads"},
+    },
+
+    # --- Documents to check for metadata ------------------------------------------
+    # Not risky in themselves: these collect files to drop on the Metadata tab.
+    {
+        "id": "meta-pdfs",
+        "category": "Documents to check for metadata",
+        "label": "PDFs to check for metadata",
+        "description": "Reports, policies, forms and minutes: the PDFs most likely to have been written in-house, "
+                       "so their properties name real people and software.",
+        "fields": {"filetype": "pdf", "anyof": "report, policy, form, minutes"},
+        "next": _META_NEXT,
+    },
+    {
+        "id": "meta-word",
+        "category": "Documents to check for metadata",
+        "label": "Word documents to check for metadata",
+        "description": "Word files keep the author, last editor, company, template path and comment authors.",
+        "fields": {"filetype": "docx", "anyof": "report, policy, form, minutes"},
+        "next": _META_NEXT,
+    },
+    {
+        "id": "meta-powerpoint",
+        "category": "Documents to check for metadata",
+        "label": "PowerPoint decks to check for metadata",
+        "description": "Presentations often carry comment authors and linked files from internal shares.",
+        "fields": {"filetype": "pptx", "anyof": "presentation, training, overview, agenda"},
+        "next": _META_NEXT,
     },
 ]
 

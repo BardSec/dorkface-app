@@ -81,3 +81,18 @@ label code, .b-head code { font-size: .8em; }
 /* Saved */
 .s-item { background: var(--bs-body-bg); border: 1px solid var(--bs-border-color); border-radius: .5rem; padding: .6rem .9rem; margin-bottom: .5rem; }
 .s-item .font-monospace { word-break: break-word; }
+
+/* Metadata */
+.drop-zone { display: block; padding: 2rem 1rem; text-align: center; cursor: pointer; background: var(--bs-body-bg);
+  border: 2px dashed var(--bs-border-color); border-radius: .75rem; transition: border-color .15s, background .15s; }
+/* The file input sits after the zone (visually hidden), so keyboard focus is shown on the zone with :has(). */
+.drop-zone:hover, .drop-zone.over, .drop-zone:has(+ #m-files:focus-visible) { border-color: var(--ut-orange); }
+.drop-zone.over { background: rgba(255, 130, 0, .08); }
+.m-list li + li { border-top: 1px solid var(--bs-border-color-translucent); padding-top: .2rem; margin-top: .2rem; }
+.m-value { word-break: break-word; min-width: 0; }
+.m-label { width: 14rem; }
+.m-file { background: var(--bs-body-bg); border: 1px solid var(--bs-border-color); border-radius: .5rem; padding: .55rem .9rem; margin-bottom: .5rem; }
+.m-file > summary { cursor: pointer; }
+.m-file .table { --bs-table-bg: transparent; }
+.m-kind { font-weight: 500; background: var(--bs-secondary-bg); color: var(--bs-body-color); border: 1px solid var(--bs-border-color); }
+.m-kind-person, .m-kind-email, .m-kind-location { border-color: var(--ut-orange); }

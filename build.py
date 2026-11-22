@@ -25,6 +25,7 @@ SRC = ROOT / "src"
 # Field limits mirrored from dork_core.js (MAX_SITE_LEN + room for a URL, MAX_LEN) for maxlength attributes.
 MAX_SITE_INPUT = 353
 MAX_LEN = 200
+MAX_META_MB = 100  # meta_core.js MAX_FILE
 
 # connect-src 'none' is the guarantee: the page cannot fetch, post, open websockets or
 # send beacons. Everything else is same-origin static files. img-src data: is for
@@ -82,6 +83,8 @@ ASSETS = {
     "dork.js": SRC / "dork.js",
     "saved.js": SRC / "saved.js",
     "catalog.js": SRC / "catalog.js",
+    "meta_core.js": SRC / "meta_core.js",
+    "meta.js": SRC / "meta.js",
     "theme.js": SRC / "theme.js",
     "dork.css": SRC / "dork.css",
     "favicon.svg": SRC / "favicon.svg",
@@ -116,6 +119,7 @@ def build(out):
         catalog_count=len(CATALOG),
         max_site=MAX_SITE_INPUT,
         max_len=MAX_LEN,
+        max_meta_mb=MAX_META_MB,
     )
     (out / "index.html").write_text(html, encoding="utf-8")
     (out / "_headers").write_text(headers_file(), encoding="utf-8")

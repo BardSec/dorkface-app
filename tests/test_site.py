@@ -56,7 +56,7 @@ def test_assets_are_versioned(built):
 def test_shipped_js_and_css_make_no_requests(built):
     out, _ = built
     files = list(out.rglob("*.js")) + list(out.rglob("*.css"))
-    assert {f.name for f in files} >= {"dork_core.js", "dork.js", "saved.js", "catalog.js"}
+    assert {f.name for f in files} >= {"dork_core.js", "dork.js", "saved.js", "catalog.js", "meta_core.js", "meta.js"}
     for f in files:
         text = f.read_text()
         assert "sourceMappingURL" not in text, f
@@ -64,9 +64,10 @@ def test_shipped_js_and_css_make_no_requests(built):
             for api in ("fetch(", "XMLHttpRequest", "sendBeacon", "WebSocket", "EventSource", "innerHTML",
                         "outerHTML", "insertAdjacentHTML", "document.write", "eval(", "new Function", "import("):
                 assert api not in text, (f.name, api)
-            # The only absolute URL in shipped JS is Google's search endpoint.
+            # The only absolute URLs in shipped JS: Google's search endpoint, and the XMP namespace
+            # identifier meta_core.js matches inside images (a label, never requested).
             urls = set(re.findall(r"https?://[^\s'\"`]+", text))
-            assert urls <= {"https://www.google.com/search?q="}, (f.name, urls)
+            assert urls <= {"https://www.google.com/search?q=", "http://ns.adobe.com/xap/1.0/\\0"}, (f.name, urls)
         else:
             assert not re.search(r"url\((?!['\"]?data:)", text), f
 
@@ -98,3 +99,13 @@ def test_404_and_noscript(built):
     out, html = built
     assert (out / "404.html").is_file()
     assert "<noscript>" in html
+
+
+def test_metadata_tab(built):
+    _, html = built
+    assert 'data-view="metadata"' in html and 'href="#metadata"' in html
+    assert re.search(r'<input[^>]*type="file"[^>]*id="m-files"[^>]*multiple', html)
+    assert "up to 100 MB each" in html
+    # Scripts load in dependency order: helpers, then the metadata core, then its page.
+    order = [html.index(f'src="{n}?') for n in ("dork_core.js", "dork.js", "meta_core.js", "meta.js")]
+    assert order == sorted(order)

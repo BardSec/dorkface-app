@@ -101,7 +101,7 @@
   }
 
   // --- tabs ------------------------------------------------------------------------
-  const VIEWS = ['catalog', 'builder', 'saved'];
+  const VIEWS = ['catalog', 'builder', 'metadata', 'saved'];
   function show(view) {
     document.querySelectorAll('[data-view]').forEach(v => { v.hidden = v.dataset.view !== view; });
     document.querySelectorAll('[data-tab]').forEach(a => {
