@@ -1,5 +1,5 @@
 // dorkface Saved tab: saved searches (localStorage, until deleted) and history
-// (sessionStorage, gone when the tab closes, which matters on shared school computers).
+// (sessionStorage, gone when the tab closes, which matters on shared computers).
 // Stored entries are re-checked with DorkCore.build before use, so an edited or stale
 // entry can't produce a query the builder wouldn't.
 (() => {

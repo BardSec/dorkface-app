@@ -1,7 +1,7 @@
 # dorkface
 
 A free, browser-only tool for building Google "dork" queries, mainly for auditing what your own
-organization has exposed online (e.g. `site:yourdistrict.org filetype:xlsx`). Live at
+organization has exposed online (e.g. `site:example.com filetype:xlsx`). Live at
 **https://dork.bardsec.com** (Cloudflare Pages). Nothing you type leaves the page: dorkface only
 writes a `google.com/search?q=…` link, and your browser opens it when you click.
 
@@ -19,7 +19,7 @@ A companion to [KQL Workbench](https://kqlworkbench.bardsec.com/) and
   each part is explained in plain English. Share links put the form in the URL fragment (`#b=…`),
   which browsers never send to servers.
 - **Saved**: saved searches in `localStorage` (until deleted), history in `sessionStorage` (gone
-  when the tab closes, for shared school computers). Delete and clear-all controls.
+  when the tab closes, for shared computers). Delete and clear-all controls.
 
 ## How it works
 

@@ -87,7 +87,7 @@
         <h2 class="h5">Found something?</h2>
         <ol class="small text-body-secondary">
           <li>Remove the file, or put it behind a sign-in. If it holds passwords or keys, change them first.</li>
-          <li>Check whether it held student or staff data. If so, follow your district's incident process (FERPA).</li>
+          <li>Check whether it held personal data about customers, employees or anyone else. If so, follow your organization's incident process; some laws require telling the people affected.</li>
           <li>Ask Google to drop it: in <strong>Google Search Console → Removals</strong> for a site you own, or with
             Google's <strong>Refresh outdated content</strong> tool for one you don't.</li>
           <li>Fix the cause: turn off directory listings, and block <code>.env</code>, <code>.bak</code> and <code>.sql</code>
@@ -103,7 +103,7 @@
     <div class="b-section">
       <label class="form-label fw-semibold mb-1" for="c-site">Your domain</label>
       <input class="form-control font-monospace" id="c-site" maxlength="{{ max_site }}" autocomplete="off" spellcheck="false"
-             placeholder="yourdistrict.org">
+             placeholder="example.com">
       <div class="form-text" id="c-site-help">Fills <code>site:</code> in every search below. A full web address works too.</div>
       <div class="invalid-feedback" id="c-site-error"></div>
     </div>
@@ -127,7 +127,7 @@
             <div class="b-head">Where to look</div>
             <div class="mb-3">
               <label class="form-label" for="b-site">Site or domain <code>site:</code></label>
-              <input class="form-control font-monospace" id="b-site" name="site" maxlength="{{ max_site }}" spellcheck="false" placeholder="yourdistrict.org">
+              <input class="form-control font-monospace" id="b-site" name="site" maxlength="{{ max_site }}" spellcheck="false" placeholder="example.com">
               <div class="form-text">Includes every subdomain. A full web address works too; the path is dropped.</div>
               <div class="invalid-feedback" data-error="site"></div>
             </div>

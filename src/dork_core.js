@@ -67,7 +67,7 @@
     if (!ok) {
       return {value: '', error: /[^\x00-\x7f]/.test(s)
         ? 'Use the plain ASCII form of the domain (e.g. xn--…), not accented letters.'
-        : 'Enter a domain like yourdistrict.org (a web address works too; the path is dropped).'};
+        : 'Enter a domain like example.com (a web address works too; the path is dropped).'};
     }
     return {value: s};
   }

@@ -21,8 +21,8 @@ CATEGORIES = [
     "Directory listings",
 ]
 
-_SPREADSHEET_NEXT = ("Open each result and check who should see it. If it holds staff or student data, remove it or "
-                     "put it behind a sign-in, then ask Google to drop it (Search Console → Removals).")
+_SPREADSHEET_NEXT = ("Open each result and check who should see it. If it holds personal data, remove it or put it "
+                     "behind a sign-in, then ask Google to drop it (Search Console → Removals).")
 
 CATALOG = [
     # --- Exposed spreadsheets & data ---------------------------------------------
@@ -54,21 +54,21 @@ CATALOG = [
         "next": _SPREADSHEET_NEXT,
     },
     {
-        "id": "student-spreadsheets",
+        "id": "personal-spreadsheets",
         "category": "Exposed spreadsheets & data",
-        "label": "Spreadsheets that mention students",
-        "description": "Excel files containing words like “student ID”, “date of birth” or “grade level”. "
-                       "Anything that turns up here may be a FERPA issue.",
-        "fields": {"filetype": "xlsx", "anyof": "student id, date of birth, grade level, guardian"},
-        "next": "Treat a hit as a possible FERPA disclosure: take the file down first, then follow your "
-                "district's incident process.",
+        "label": "Spreadsheets with personal details",
+        "description": "Excel files containing words like “date of birth”, “home address” or “phone number”: "
+                       "customer lists, member rosters, sign-up exports.",
+        "fields": {"filetype": "xlsx", "anyof": "date of birth, home address, phone number, emergency contact"},
+        "next": "Treat a hit as a possible data breach: take the file down first, then follow your "
+                "organization's incident process. Some laws require telling the people affected.",
     },
     {
-        "id": "staff-spreadsheets",
+        "id": "hr-spreadsheets",
         "category": "Exposed spreadsheets & data",
-        "label": "Spreadsheets with staff pay or personal details",
-        "description": "Excel files mentioning salaries, employee IDs or home addresses.",
-        "fields": {"filetype": "xlsx", "anyof": "salary, employee id, home address, ssn"},
+        "label": "Spreadsheets with pay or HR details",
+        "description": "Excel files mentioning salaries, payroll, employee IDs or Social Security numbers.",
+        "fields": {"filetype": "xlsx", "anyof": "salary, payroll, employee id, ssn"},
         "next": _SPREADSHEET_NEXT,
     },
 
@@ -89,13 +89,13 @@ CATALOG = [
         "fields": {"filetype": "pdf", "anyof": "confidential, internal use only, do not distribute"},
     },
     {
-        "id": "iep-504",
+        "id": "financial-docs",
         "category": "Sensitive documents",
-        "label": "Special education documents (IEP / 504)",
-        "description": "PDFs that mention IEPs or 504 plans. Blank templates are fine; filled-in plans are not.",
-        "fields": {"filetype": "pdf", "anyof": "IEP, 504 plan, individualized education program"},
-        "next": "A filled-in plan is a FERPA disclosure: take it down first, then follow your district's "
-                "incident process.",
+        "label": "Financial documents",
+        "description": "PDFs mentioning bank statements, account or routing numbers, or tax returns. Blank forms "
+                       "are fine; filled-in ones are not.",
+        "fields": {"filetype": "pdf", "anyof": "bank statement, account number, routing number, tax return"},
+        "next": "If real account numbers are exposed, take the file down first and tell whoever owns the accounts.",
     },
     {
         "id": "ssn-docs",
@@ -119,7 +119,7 @@ CATALOG = [
         "category": "Sensitive documents",
         "label": "Wi-Fi network instructions",
         "description": "Documents describing how to join your wireless networks. Guest instructions are fine; "
-                       "staff network keys are not.",
+                       "internal network keys are not.",
         "fields": {"anyof": "wifi password, wireless password, network key, SSID"},
     },
 

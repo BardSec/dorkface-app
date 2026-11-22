@@ -116,8 +116,8 @@ def test_filetype_list_has_no_duplicates():
     ("site:example.org", "example.org"),
     ("*.example.org", "example.org"),
     ("example.org.", "example.org"),
-    ("  k12.tn.us  ", "k12.tn.us"),
-    ("my-district.k12.ca.us", "my-district.k12.ca.us"),
+    ("  example.co.uk  ", "example.co.uk"),
+    ("my-company.example.co.uk", "my-company.example.co.uk"),
     ("xn--bcher-kva.example", "xn--bcher-kva.example"),
     ("ftp://files.example.org/", "files.example.org"),
 ])

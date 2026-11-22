@@ -5,7 +5,7 @@ Drafted 2026-11-20, re-planned 2026-11-22 for Cloudflare Pages. Items marked **(
 Modeled on the KQL Workbench and Wazuh Workbench (`~/Projects/kql/public_site`, `~/Projects/kql/wazuh_site`): a free, browser-only static site where nothing you type leaves the page.
 
 ## Purpose
-dorkface helps non-experts build Google "dork" queries, mainly so they can audit what their own organization exposes online (e.g. `site:yourdistrict.org filetype:xlsx`).
+dorkface helps non-experts build Google "dork" queries, mainly so they can audit what their own organization exposes online (e.g. `site:example.com filetype:xlsx`).
 
 ## Hard rules (decided)
 - **Build the query only.** dorkface writes a `https://www.google.com/search?q=…` link and the user's browser opens it. Nothing on our side ever contacts Google.
@@ -41,7 +41,7 @@ dorkface helps non-experts build Google "dork" queries, mainly so they can audit
 
 ### Saved searches and history
 - **Saved searches** (user clicks Save): `localStorage`.
-- **History** (recorded automatically when you click Search): `sessionStorage`, so it's gone when the tab closes. This matters on shared school computers (same reasoning as the workbench builder draft).
+- **History** (recorded automatically when you click Search): `sessionStorage`, so it's gone when the tab closes. This matters on shared computers (same reasoning as the workbench builder draft).
 - Both have delete and clear-all controls. Nothing is sent anywhere.
 
 ## Query-building rules (decided; tested)
