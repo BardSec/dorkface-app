@@ -1,7 +1,7 @@
 # dorkface
 
 A free, browser-only tool for building Google "dork" queries, mainly for auditing what your own
-organization has exposed online (e.g. `site:yourdistrict.org filetype:xlsx`). It will be live at
+organization has exposed online (e.g. `site:yourdistrict.org filetype:xlsx`). Live at
 **https://dork.bardsec.com** (Cloudflare Pages). Nothing you type leaves the page: dorkface only
 writes a `google.com/search?q=…` link, and your browser opens it when you click.
 
@@ -58,15 +58,17 @@ To add a catalog entry, add it to `CATALOG` in `catalog.py`; the tests check it.
 
 ## Deploy (Cloudflare Pages, direct upload)
 
-Not deployed yet. Planned: Pages project `dorkface` on the EDTECHIRL account (same as the
-workbenches), custom domain `dork.bardsec.com` (Pages custom domain + proxied CNAME
-`dork` → `dorkface.pages.dev` in the bardsec.com zone).
+Pages project `dorkface` on the EDTECHIRL account (same as the workbenches), live since
+2026-11-22. The domain is a Pages custom domain plus a proxied CNAME `dork` → `dorkface.pages.dev`
+in the bardsec.com zone. The project was created with the Pages API
+(`POST /accounts/<id>/pages/projects`), not `wrangler pages project create`, which needs Workers
+permissions this token doesn't have.
 
 ```bash
 .venv/bin/python build.py
 set -a; . ~/.secrets/api-keys.env; set +a
-CLOUDFLARE_API_TOKEN=$CLOUDFLARE_API_TOKEN_EDTECHIRL_WRITE CLOUDFLARE_ACCOUNT_ID=<EDTECHIRL account id> \
-  WRANGLER_SEND_METRICS=false npx -y wrangler@4 pages deploy dist --project-name dorkface --branch main
+CLOUDFLARE_API_TOKEN=$CLOUDFLARE_API_TOKEN_EDTECHIRL_WRITE CLOUDFLARE_ACCOUNT_ID=0b8e26d70e71fcf59e0ce3f2bbce100e \
+  WRANGLER_SEND_METRICS=false npx -y wrangler@4 pages deploy dist --project-name dorkface --branch main --commit-hash $(git rev-parse HEAD)
 ```
 
 Check with `curl -sI https://dork.bardsec.com/` (one value per security header). Rollback:
