@@ -4,6 +4,7 @@ A free, browser-only tool for building Google "dork" queries, mainly for auditin
 organization has exposed online (e.g. `site:example.com filetype:xlsx`). Live at
 **https://dork.bardsec.com** (Cloudflare Pages). Nothing you type leaves the page: dorkface only
 writes a `google.com/search?q=…` link, and your browser opens it when you click.
+Source: https://github.com/BardSec/dorkface-app
 
 A companion to [KQL Workbench](https://kqlworkbench.bardsec.com/) and
 [Wazuh Workbench](https://wazuhworkbench.bardsec.com/), and built the same way.
